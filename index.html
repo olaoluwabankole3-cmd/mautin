@@ -324,7 +324,7 @@
     #dress3d {
       position: fixed; z-index: 1; left: 50%; top: 5vh;
       transform: translateX(-50%);
-      width: min(112vw, 900px); height: 94vh;
+      width: min(84vw, 900px); height: 94vh;
       pointer-events: none; opacity: .36; mix-blend-mode: multiply;
       display: block; contain: strict;
     }
@@ -413,7 +413,7 @@
       .hero-vertical, .scroll-indicator { display: none; }
       .hero-note { position: static; margin-top: -4px; font-size: 8px; }
       #dress3d {
-        width: 128vw; max-width: 760px; height: 91vh;
+        width: 100vw; max-width: 520px; height: 91vh;
         top: 5vh; opacity: .34;
       }
       .marquee-track { padding: 15px 0; }
@@ -749,7 +749,7 @@
         return;
       }
 
-      const mobile = window.matchMedia("(max-width: 760px)").matches;
+      let mobile = window.matchMedia("(max-width: 760px)").matches;
       let renderer;
       try {
         renderer = new THREE.WebGLRenderer({
@@ -996,7 +996,7 @@
       // Floral lace clustered around the corset and the upper front of the skirt.
       [[-0.28,1.36],[-0.12,1.46],[0.11,1.46],[0.28,1.35],[-0.19,1.19],[0,1.23],[0.2,1.18],[-0.28,0.98],[0.24,0.97]]
         .forEach(([x,y],i) => {
-          const t = THREE.MathUtils.clamp((y - 0.53) / 3.16, 0, 1);
+          const t = THREE.MathUtils.clamp((y - 0.48) / 1.20, 0.03, 0.97);
           const dims = bodiceProfile(t);
           const z = dims.rz * Math.sqrt(Math.max(0.1, 1 - Math.pow(x / dims.rx, 2))) + 0.02;
           makeFlower(x, y, z, i < 7 ? 0.078 : 0.060);
@@ -1055,10 +1055,12 @@
         const rect = canvas.getBoundingClientRect();
         if (!rect.width || !rect.height) return;
         const small = window.matchMedia("(max-width: 760px)").matches;
+        mobile = small;
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.2 : 1.5));
         renderer.setSize(rect.width, rect.height, false);
         camera.aspect = rect.width / rect.height;
-        camera.position.z = small ? 9.65 : 8.55;
+        camera.position.z = small ? 10.25 : 8.75;
+        dress.scale.set(small ? 0.73 : 0.96, small ? 0.96 : 1.02, small ? 0.73 : 0.96);
         camera.updateProjectionMatrix();
       }
       const ro = new ResizeObserver(resize);
