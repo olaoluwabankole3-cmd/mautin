@@ -112,7 +112,7 @@ h1,h2{font-family:var(--serif);font-weight:400;letter-spacing:-.04em}
 .form-grid{grid-template-columns:1fr 1fr;gap:18px}
 .field-full{grid-column:1/-1}
 }
-@media(max-width:420px){
+@media(max-width:699px){
 .nav{padding-inline:14px}
 .brand strong{font-size:22px}
 .navcta{font-size:7px;min-height:36px;padding:0 9px;gap:7px}
