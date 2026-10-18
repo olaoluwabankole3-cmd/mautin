@@ -1,29 +1,34 @@
 # Mautin Atelier
 
-A monochrome, mobile-first fashion atelier website with a custom procedural 3D bridal gown built in Three.js.
+A black-and-white, phone-first fashion atelier website with dedicated service pages and a custom rotating 3D bridal gown.
 
-## What's included
-- Black-and-white editorial direction.
-- Phone-first layout with swipeable collection cards.
-- A large, centred, continuously rotating 3D wedding dress with a shaped sweetheart corset, layered satin skirt, train, subtle lace appliqué, and veil.
-- Rotation gently speeds up while the visitor scrolls.
-- Responsive navigation, subtle section reveals, and reduced-motion support.
-- Instagram / direct-message enquiry links.
-- No build step or environment variables; the main website is a single static `index.html`.
+## Pages
+- `index.html` — homepage and collection overview.
+- `bridal.html` — bridal couture information and a preselected bridal enquiry.
+- `occasion-wear.html` — occasion wear service page.
+- `custom-design.html` — made-to-measure/custom design page.
+- `contact.html` — enquiry form which prepares a message for Instagram; it does not claim to submit an order or confirm a booking.
+- `atelier-pages.css` — shared responsive styles for service and contact pages.
+
+## Design and interactions
+- Monochrome editorial styling and mobile-first layouts.
+- Fullscreen-centred Three.js wedding dress, generated in the browser, with a layered skirt, shaped bodice, veil and lace details.
+- Swipeable collection cards on smaller screens.
+- Category cards and service links open the relevant detail page.
+- Enquiry buttons lead to the contact page, where the visitor can prepare a service-specific message and continue to Instagram.
+- Instagram profile and DM links are included where they are the appropriate destination.
+- No build step or environment variables are required.
 
 ## Preview locally
-Open `index.html` in a browser. An internet connection is required for Google Fonts, the editorial imagery and Three.js (loaded from jsDelivr). The 3D dress is generated in the browser; no external model viewer is embedded.
+Open `index.html` in a browser. An internet connection is required for Google Fonts, external editorial imagery and Three.js (loaded from jsDelivr).
 
 ## Deploy on Vercel
-1. In Vercel, choose **Add New → Project**.
-2. Import `olaoluwabankole3-cmd/mautin`.
-3. Keep the root directory at the repository root and set the framework preset to **Other** if asked.
-4. Deploy the static site.
+1. Import `olaoluwabankole3-cmd/mautin` as a Vercel project.
+2. Keep the root directory at the repository root and choose the **Other** framework preset if asked.
+3. Deploy the static site.
+4. Verify the deployed URL is publicly accessible before sharing with the client.
 
-## Before presenting to the client
-- Replace temporary editorial imagery in `index.html` with Mautin Atelier's approved fashion and bridal photographs. Current photographs are editorial stand-ins, not verified pictures of her own work.
-- Confirm service wording and any appointment details with the designer.
-- Confirm the Vercel deployment is publicly viewable without requiring the client to sign in.
-
-## Main file
-- `index.html` — site markup, monochrome responsive styles, the custom 3D dress, motion, and enquiry links.
+## Before final handoff
+- Replace temporary editorial imagery with Mautin Atelier's approved photographs.
+- Confirm service wording, design timelines, fitting arrangements, prices and appointment availability directly with the designer.
+- The website does not take payments, and the enquiry form does not confirm a booking.
