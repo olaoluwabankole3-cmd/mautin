@@ -138,7 +138,8 @@
     draft.value=message;
     result.classList.add('show');
     status.textContent='Your message is ready. Instagram will open in a new tab; paste the message there to send your enquiry.';
-    const tab=window.open('https://ig.me/m/mautinatelier','_blank','noopener,noreferrer');
+    const tab=window.open('https://ig.me/m/mautinatelier','_blank');
+    if(tab)tab.opener=null;
     if(!tab)status.textContent='Your message is ready below. Copy it, then open Instagram using the button below.';
     try{await navigator.clipboard.writeText(message);status.textContent='Message copied. Open Instagram and paste it into your message to Mautin Atelier.';}
     catch(error){/* The draft remains visible and can be selected/copied manually. */}
