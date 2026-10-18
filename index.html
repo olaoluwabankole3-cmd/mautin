@@ -320,17 +320,13 @@
     html { scroll-padding-top: 78px; }
     body { background: #fff; color: #080808; }
     body::before { opacity: .045; }
-    .dress3d-wrap {
-      position: fixed; z-index: 1; top: 8vh; right: -3vw;
-      width: clamp(300px, 40vw, 520px); height: 84vh;
-      pointer-events: none; opacity: .32; mix-blend-mode: multiply;
-      overflow: hidden; contain: layout paint; transform: translate3d(0,0,0);
-      will-change: transform; transition: opacity .35s ease;
-    }
-    #dress3dFrame {
-      display: block; width: 100%; height: 100%; border: 0;
-      pointer-events: none; filter: grayscale(1) contrast(1.04);
-      background: transparent;
+    .dress3d-layer-note { display: none; }
+    #dress3d {
+      position: fixed; z-index: 1; left: 50%; top: 5vh;
+      transform: translateX(-50%);
+      width: min(112vw, 900px); height: 94vh;
+      pointer-events: none; opacity: .36; mix-blend-mode: multiply;
+      display: block; contain: strict;
     }
     main, footer, .announcement { position: relative; z-index: 2; }
     .site-header { background: rgba(255,255,255,.95); }
@@ -416,9 +412,9 @@
       .hero-stamp small { font-size: 6px; }
       .hero-vertical, .scroll-indicator { display: none; }
       .hero-note { position: static; margin-top: -4px; font-size: 8px; }
-      .dress3d-wrap {
-        width: min(76vw, 330px); height: 57vh; min-height: 340px;
-        top: 26vh; right: -10vw; opacity: .24;
+      #dress3d {
+        width: 128vw; max-width: 760px; height: 91vh;
+        top: 5vh; opacity: .34;
       }
       .marquee-track { padding: 15px 0; }
       .marquee-item { font-size: 18px; }
@@ -491,23 +487,14 @@
       .cta-inner h2 { font-size: 51px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .dress3d-wrap { display: none; }
+      #dress3d { display: none; }
       .collection-grid { scroll-behavior: auto; }
     }
 
   </style>
 </head>
 <body>
-  <div class="dress3d-wrap" id="dress3dWrap" aria-hidden="true">
-    <iframe
-      id="dress3dFrame"
-      title="Continuously rotating 3D bridal gown by Fashion by Stela Yordanova"
-      src="https://sketchfab.com/models/48f95bed136f47c28a87ee276b638095/embed?autostart=1&autospin=0.18&transparent=1&ui_infos=0&ui_controls=0&ui_stop=0&dnt=1"
-      allow="autoplay; fullscreen; xr-spatial-tracking"
-      loading="eager"
-      tabindex="-1"
-      aria-hidden="true"></iframe>
-  </div>
+  <canvas id="dress3d" aria-hidden="true"></canvas>
   <div class="announcement">Considered fashion <span>✳</span> Personal by design <span>✳</span> Made for your moments</div>
   <header class="site-header">
     <div class="nav page">
@@ -681,7 +668,7 @@
           <p style="font-size:10px;line-height:1.8;color:#929292;max-width:230px;margin-top:20px;">For custom pieces, bridal enquiries and everything in between.</p>
         </div>
       </div>
-      <div class="footer-end"><span>© <span id="year"></span> Mautin Atelier. All rights reserved.</span><span>Made for the moments that matter.</span><span class="model-credit">3D dress: <a href="https://sketchfab.com/3d-models/wedding-dress-48f95bed136f47c28a87ee276b638095" target="_blank" rel="noopener noreferrer">Fashion by Stela Yordanova</a> via <a href="https://sketchfab.com/" target="_blank" rel="noopener noreferrer">Sketchfab</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</span><a href="#home">Back to top ↑</a></div>
+      <div class="footer-end"><span>© <span id="year"></span> Mautin Atelier. All rights reserved.</span><span>Made for the moments that matter.</span><a href="#home">Back to top ↑</a></div>
     </div>
   </footer>
   <script>
@@ -752,33 +739,352 @@
     })();
   </script>
 
-  <script>
-    (function () {
-      const wrap = document.getElementById("dress3dWrap");
-      if (!wrap || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        if (wrap) wrap.remove();
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
+
+    (() => {
+      const canvas = document.getElementById("dress3d");
+      if (!canvas || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        if (canvas) canvas.remove();
         return;
       }
-      // Sketchfab handles the actual 3D turntable rotation. This gentle parallax
-      // keeps the gown feeling anchored to the page as visitors scroll on mobile.
-      let ticking = false;
-      function updateDressPosition() {
-        const y = Math.min(window.scrollY, 2200);
-        const mobile = window.matchMedia("(max-width: 760px)").matches;
-        const drift = Math.min(y * (mobile ? 0.025 : 0.035), mobile ? 54 : 82);
-        wrap.style.transform = "translate3d(0," + drift.toFixed(1) + "px,0)";
-        ticking = false;
+
+      const mobile = window.matchMedia("(max-width: 760px)").matches;
+      let renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({
+          canvas,
+          alpha: true,
+          antialias: !mobile,
+          powerPreference: "low-power",
+          premultipliedAlpha: false
+        });
+      } catch (error) {
+        canvas.style.display = "none";
+        return;
       }
-      window.addEventListener("scroll", function () {
-        if (!ticking) {
-          window.requestAnimationFrame(updateDressPosition);
-          ticking = true;
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.2 : 1.5));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
+      camera.position.set(0, 0.0, 9.4);
+      camera.lookAt(0, 0.0, 0);
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 2.15));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 3.3);
+      keyLight.position.set(-3.8, 5.5, 4.5);
+      scene.add(keyLight);
+      const fillLight = new THREE.DirectionalLight(0xffffff, 2.0);
+      fillLight.position.set(4.2, 1.2, 3.2);
+      scene.add(fillLight);
+      const rimLight = new THREE.DirectionalLight(0xffffff, 2.6);
+      rimLight.position.set(0.6, 4.0, -4.0);
+      scene.add(rimLight);
+      const lowerLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      lowerLight.position.set(0, -3.0, 3.8);
+      scene.add(lowerLight);
+
+      const dress = new THREE.Group();
+      scene.add(dress);
+
+      const satin = new THREE.MeshPhysicalMaterial({
+        color: 0xfafafa, roughness: 0.26, metalness: 0.015,
+        clearcoat: 0.45, clearcoatRoughness: 0.24, side: THREE.DoubleSide
+      });
+      const satinShadow = new THREE.MeshPhysicalMaterial({
+        color: 0xe5e5e5, roughness: 0.35, metalness: 0,
+        clearcoat: 0.22, side: THREE.DoubleSide
+      });
+      const tulle = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff, roughness: 0.45, metalness: 0,
+        transparent: true, opacity: 0.25, depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const lace = new THREE.MeshStandardMaterial({
+        color: 0xf9f9f9, roughness: 0.52, metalness: 0.01
+      });
+      const stitch = new THREE.MeshBasicMaterial({
+        color: 0x8b8b8b, transparent: true, opacity: 0.48
+      });
+      const softStitch = new THREE.MeshBasicMaterial({
+        color: 0xaaaaaa, transparent: true, opacity: 0.30
+      });
+
+      // Sculpted, sweeping A-line skirt with soft vertical pleats and a modest train.
+      function skirtPoint(t, angle, layer = 0) {
+        const pleatCount = 34;
+        const pleat = Math.cos(angle * pleatCount + t * 2.2);
+        const train = Math.pow(t, 5.5) * Math.max(0, -Math.sin(angle)) * 0.43;
+        const base = 0.34 + 1.35 * Math.pow(t, 1.18) + train;
+        const ripple = (0.012 + 0.052 * t) * pleat;
+        const r = base + ripple + layer;
+        const y = 0.53 - 3.16 * t - Math.pow(t, 7) * Math.max(0, -Math.sin(angle)) * 0.20;
+        return new THREE.Vector3(r * Math.cos(angle), y, r * Math.sin(angle) * 0.74);
+      }
+
+      function makeSkirt(layer, material, phase, scale = 1) {
+        const radialSegments = 168;
+        const rows = 94;
+        const positions = [];
+        const indices = [];
+        for (let row = 0; row <= rows; row++) {
+          const t = row / rows;
+          for (let col = 0; col <= radialSegments; col++) {
+            const angle = (col / radialSegments) * Math.PI * 2;
+            const p = skirtPoint(t, angle + phase, layer);
+            positions.push(p.x * scale, p.y, p.z * scale);
+          }
         }
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < radialSegments; col++) {
+            const a = row * (radialSegments + 1) + col;
+            const b = a + radialSegments + 1;
+            indices.push(a, b, a + 1, b, b + 1, a + 1);
+          }
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+        const shell = new THREE.Mesh(geometry, material);
+        shell.castShadow = false;
+        shell.receiveShadow = false;
+        dress.add(shell);
+      }
+
+      makeSkirt(0.00, satinShadow, 0.00, 0.985);
+      makeSkirt(0.018, satin, 0.045, 1.00);
+      makeSkirt(0.055, tulle, 0.115, 1.012);
+
+      // Fine folds flow from the waist towards the lower skirt, like pressed satin.
+      for (let seam = 0; seam < 24; seam++) {
+        const angle = (seam / 24) * Math.PI * 2;
+        const points = [];
+        for (let step = 0; step <= 62; step++) {
+          const t = step / 62;
+          points.push(skirtPoint(t, angle, 0.064));
+        }
+        dress.add(new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 62, 0.0038, 4, false),
+          softStitch
+        ));
+      }
+
+      // Layered hem piping follows the train and gives the tulle a finished edge.
+      for (const [t, offset, material, radius] of [
+        [0.985, 0.065, softStitch, 0.0048],
+        [0.952, 0.059, softStitch, 0.0032],
+        [0.998, 0.055, satin, 0.009]
+      ]) {
+        const points = [];
+        for (let i = 0; i <= 190; i++) {
+          points.push(skirtPoint(t, (i / 190) * Math.PI * 2, offset));
+        }
+        dress.add(new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 190, radius, 5, true),
+          material
+        ));
+      }
+
+      // A curved, fitted corset with a soft sweetheart neckline.
+      const levels = [
+        { t: 0.00, rx: 0.340, rz: 0.230 },
+        { t: 0.16, rx: 0.405, rz: 0.260 },
+        { t: 0.38, rx: 0.480, rz: 0.295 },
+        { t: 0.57, rx: 0.555, rz: 0.325 },
+        { t: 0.74, rx: 0.595, rz: 0.335 },
+        { t: 0.90, rx: 0.555, rz: 0.315 },
+        { t: 1.00, rx: 0.490, rz: 0.285 }
+      ];
+      function bodiceProfile(t) {
+        for (let i = 0; i < levels.length - 1; i++) {
+          const a = levels[i], b = levels[i + 1];
+          if (t <= b.t) {
+            const f = (t - a.t) / (b.t - a.t);
+            return { rx: THREE.MathUtils.lerp(a.rx, b.rx, f), rz: THREE.MathUtils.lerp(a.rz, b.rz, f) };
+          }
+        }
+        return levels[levels.length - 1];
+      }
+      function necklineY(angle) {
+        const front = Math.max(0, Math.sin(angle));
+        const centerSweetheart = Math.exp(-Math.pow(Math.cos(angle) / 0.34, 2));
+        const scallop = Math.pow(Math.abs(Math.cos(angle)), 1.6) * front;
+        return 1.69 - 0.24 * centerSweetheart + 0.035 * scallop;
+      }
+      const bSegments = 128, bRows = 52, bPos = [], bIdx = [];
+      for (let row = 0; row <= bRows; row++) {
+        const t = row / bRows;
+        const dims = bodiceProfile(t);
+        for (let col = 0; col <= bSegments; col++) {
+          const a = col / bSegments * Math.PI * 2;
+          const top = necklineY(a);
+          const y = 0.48 + (top - 0.48) * t;
+          const bustLift = Math.max(0, Math.sin(a)) * Math.exp(-Math.pow((t - 0.72) / 0.22, 2)) * 0.018;
+          bPos.push(dims.rx * Math.cos(a), y + bustLift, dims.rz * Math.sin(a));
+        }
+      }
+      for (let row = 0; row < bRows; row++) {
+        for (let col = 0; col < bSegments; col++) {
+          const a = row * (bSegments + 1) + col, b = a + bSegments + 1;
+          bIdx.push(a, a + 1, b, a + 1, b + 1, b);
+        }
+      }
+      const bodiceGeometry = new THREE.BufferGeometry();
+      bodiceGeometry.setAttribute("position", new THREE.Float32BufferAttribute(bPos, 3));
+      bodiceGeometry.setIndex(bIdx);
+      bodiceGeometry.computeVertexNormals();
+      dress.add(new THREE.Mesh(bodiceGeometry, satin));
+
+      // Double-stitched corset boning and neckline trim.
+      [-0.40, -0.28, -0.14, 0, 0.14, 0.28, 0.40].forEach((x) => {
+        const points = [];
+        for (let i = 0; i <= 38; i++) {
+          const t = i / 38;
+          const dims = bodiceProfile(t);
+          const ratio = THREE.MathUtils.clamp(x / dims.rx, -0.97, 0.97);
+          const z = dims.rz * Math.sqrt(1 - ratio * ratio) + 0.008;
+          const angle = Math.asin(THREE.MathUtils.clamp(z / dims.rz, -1, 1));
+          const topY = necklineY(x >= 0 ? Math.acos(ratio) : Math.PI - Math.acos(-ratio));
+          const y = 0.49 + (topY - 0.49) * t;
+          points.push(new THREE.Vector3(x, y, z));
+        }
+        dress.add(new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 42, x === 0 ? 0.0048 : 0.0032, 5, false),
+          stitch
+        ));
+      });
+
+      const necklinePoints = [];
+      const necklineInner = [];
+      for (let i = 0; i <= 160; i++) {
+        const a = (i / 160) * Math.PI * 2;
+        const dims = bodiceProfile(1);
+        necklinePoints.push(new THREE.Vector3(dims.rx * Math.cos(a), necklineY(a), dims.rz * Math.sin(a)));
+        necklineInner.push(new THREE.Vector3((dims.rx - 0.022) * Math.cos(a), necklineY(a) - 0.038, (dims.rz - 0.016) * Math.sin(a)));
+      }
+      dress.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(necklinePoints), 160, 0.017, 6, true), lace));
+      dress.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(necklineInner), 160, 0.006, 5, true), softStitch));
+
+      // Delicate appliqué flowers: small satin petals with pearl-like centres.
+      const petalGeometry = new THREE.SphereGeometry(1, 12, 8);
+      const pearlGeometry = new THREE.SphereGeometry(1, 10, 8);
+      const flowerLayer = new THREE.Group();
+      dress.add(flowerLayer);
+      function makeFlower(x, y, z, size, frontFacing = true) {
+        const flower = new THREE.Group();
+        flower.position.set(x, y, z);
+        flower.rotation.x = frontFacing ? -0.10 : 0.10;
+        for (let petal = 0; petal < 5; petal++) {
+          const a = petal / 5 * Math.PI * 2;
+          const mesh = new THREE.Mesh(petalGeometry, lace);
+          mesh.position.set(Math.cos(a) * size * 0.58, Math.sin(a) * size * 0.58, 0);
+          mesh.scale.set(size * 0.32, size * 0.57, size * 0.10);
+          mesh.rotation.z = a;
+          flower.add(mesh);
+        }
+        const centre = new THREE.Mesh(pearlGeometry, satin);
+        centre.scale.set(size * 0.18, size * 0.18, size * 0.13);
+        flower.add(centre);
+        flowerLayer.add(flower);
+      }
+
+      // Floral lace clustered around the corset and the upper front of the skirt.
+      [[-0.28,1.36],[-0.12,1.46],[0.11,1.46],[0.28,1.35],[-0.19,1.19],[0,1.23],[0.2,1.18],[-0.28,0.98],[0.24,0.97]]
+        .forEach(([x,y],i) => {
+          const t = THREE.MathUtils.clamp((y - 0.53) / 3.16, 0, 1);
+          const dims = bodiceProfile(t);
+          const z = dims.rz * Math.sqrt(Math.max(0.1, 1 - Math.pow(x / dims.rx, 2))) + 0.02;
+          makeFlower(x, y, z, i < 7 ? 0.078 : 0.060);
+        });
+
+      // Understated lace motifs on the front skirt, scaled to the fabric's curve.
+      [[-0.34,0.06],[-0.61,-0.43],[-0.10,-0.33],[0.38,0.04],[0.63,-0.46],[-0.40,-0.95],[0.12,-1.02],[0.44,-1.22],[-0.02,-1.56],[-0.62,-1.52],[0.69,-1.77]]
+        .forEach(([x,y],i) => {
+          const t = THREE.MathUtils.clamp((0.53-y)/3.16, 0.06, 0.94);
+          const width = 0.34 + 1.35 * Math.pow(t, 1.18);
+          const ratio = THREE.MathUtils.clamp(x / width, -0.92, 0.92);
+          const z = Math.sqrt(Math.max(0.05, width * width - x*x)) * 0.74 + 0.085;
+          makeFlower(x, y, z, i % 3 === 0 ? 0.080 : 0.060);
+        });
+
+      // A soft, translucent cathedral veil trails behind the silhouette.
+      const veilPos = [], veilIdx = [];
+      const veilRows = 52, veilCols = 44;
+      for (let row = 0; row <= veilRows; row++) {
+        const t = row / veilRows;
+        for (let col = 0; col <= veilCols; col++) {
+          const u = col / veilCols * 2 - 1;
+          const width = 0.34 + 1.50 * Math.pow(t, 1.15);
+          const x = u * width + Math.sin(t * 8 + u * 4) * 0.045 * t;
+          const y = 1.54 - 4.14 * t - Math.max(0, -u) * 0.10 * t;
+          const z = -0.27 - 0.34 * t + 0.035 * Math.sin(t * 7 + u * 5);
+          veilPos.push(x,y,z);
+        }
+      }
+      for (let row=0;row<veilRows;row++) for(let col=0;col<veilCols;col++) {
+        const a=row*(veilCols+1)+col,b=a+veilCols+1;
+        veilIdx.push(a,b,a+1,b,b+1,a+1);
+      }
+      const veilGeo = new THREE.BufferGeometry();
+      veilGeo.setAttribute("position",new THREE.Float32BufferAttribute(veilPos,3));
+      veilGeo.setIndex(veilIdx); veilGeo.computeVertexNormals();
+      const veilMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff, roughness: 0.7, transparent: true,
+        opacity: 0.13, depthWrite: false, side: THREE.DoubleSide
+      });
+      dress.add(new THREE.Mesh(veilGeo, veilMat));
+
+      // A tiny rosette at the waist finishes the centre-front seam.
+      makeFlower(0,0.54,0.247,0.048);
+
+      // Centred, upright dress; one continuous slow turn, with a little extra
+      // rotation while the visitor scrolls. No external model viewer or controls.
+      dress.position.y = 0.46;
+      dress.rotation.y = -0.3;
+      let lastY = window.scrollY;
+      let scrollBoost = 0;
+      let frame = 0;
+      const clock = new THREE.Clock();
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const small = window.matchMedia("(max-width: 760px)").matches;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.2 : 1.5));
+        renderer.setSize(rect.width, rect.height, false);
+        camera.aspect = rect.width / rect.height;
+        camera.position.z = small ? 9.65 : 8.55;
+        camera.updateProjectionMatrix();
+      }
+      const ro = new ResizeObserver(resize);
+      ro.observe(canvas);
+      window.addEventListener("resize", resize, { passive: true });
+      window.addEventListener("scroll", () => {
+        const delta = Math.abs(window.scrollY - lastY);
+        scrollBoost = Math.min(0.85, scrollBoost + Math.min(delta, 90) * 0.009);
+        lastY = window.scrollY;
       }, { passive: true });
-      window.addEventListener("resize", updateDressPosition, { passive: true });
-      updateDressPosition();
+      resize();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.045);
+        scrollBoost *= 0.965;
+        dress.rotation.y += dt * (0.22 + scrollBoost);
+        dress.rotation.x += ((Math.sin(clock.elapsedTime * 0.42) * 0.025) - dress.rotation.x) * 0.025;
+        dress.position.y = 0.46 + Math.sin(clock.elapsedTime * 0.62) * 0.018;
+        if (!mobile || frame % 2 === 0) renderer.render(scene, camera);
+        frame++;
+      }
+      animate();
     })();
   </script>
+
 
 </body>
 </html>
